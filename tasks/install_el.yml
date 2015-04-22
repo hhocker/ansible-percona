@@ -1,0 +1,68 @@
+---
+- name: RHEL | Ensure MySQL server is uninstalled
+  yum: name={{ item }} state=absent
+  with_items:
+          - mysql
+          - mysql-server
+
+- name: RHEL | Install percona database server
+  yum: name={{ item }} state=latest
+  with_items:
+          - Percona-Server-server-55
+          - Percona-Server-client-55
+          - percona-toolkit
+          - percona-xtrabackup
+          - MySQL-python		  
+
+- name: RHEL | Copy .my.cnf file into the root home folder
+  template: src=root-my-cnf.j2 dest=/root/.my.cnf owner=root mode=0600
+  
+- name: RHEL | Creates directory for mysql includes
+  file: path=/etc/mysql/conf.d/ state=directory owner=mysql group=mysql
+  sudo: true
+ 
+- name: RHEL | Creates directory for mysql run files
+  file: path=/var/run/mysqld/ state=directory owner=mysql group=mysql
+  sudo: true
+  
+- name: RHEL | Ensure Percona MySQL server started
+  service: name=mysql state=started
+  
+- name: RHEL | Update MySQL root password
+  mysql_user: name=root host={{ item }} password={{ root_password }} login_user=root login_password={{ root_password }} check_implicit_admin=yes
+  with_items:
+          - "{{ ansible_hostname }}"
+          - 127.0.0.1
+          - localhost
+
+- name: RHEL | Ensure anonymous users are not in the database
+  mysql_user: name='' host={{ item }} state=absent
+  with_items:
+          - "{{ ansible_hostname }}"
+          - localhost
+
+- name: RHEL | remove test database
+  mysql_db: name=test state=absent
+
+- name: RHEL | Create fnv1a_64
+  shell: /usr/bin/mysql -e "CREATE FUNCTION fnv1a_64 RETURNS INTEGER SONAME 'libfnv1a_udf.so'" && touch /var/log/libfnv1a_udf.so.done creates=/var/log/libfnv1a_udf.so.done
+
+- name: RHEL | Create fnv_64
+  shell: /usr/bin/mysql -e "CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'libfnv_udf.so'" && touch /var/log/libfnv_udf.so.done creates=/var/log/libfnv_udf.so.done
+
+- name: RHEL | Create murmur_hash
+  shell: /usr/bin/mysql -e "CREATE FUNCTION murmur_hash RETURNS INTEGER SONAME 'libmurmur_udf.so'" && touch /var/log/libmurmur_udf.so.done creates=/var/log/libmurmur_udf.so.done
+  
+- name: RHEL | Ensure Percona MySQL server with default config stopped
+  service: name=mysql state=stopped
+ 
+- name: RHEL | Deploy my.cnf from ansible playbook files
+  copy: src={{ path_to_existing_cnf }} dest=/etc/my.cnf owner=root mode=0644
+  when: path_to_existing_cnf != ""
+ 
+- name: RHEL | Write custom server configuration
+  template: src=my.cnf.j2 dest=/etc/my.cnf owner=root mode=0644
+  when: path_to_existing_cnf == False
+  
+- name: RHEL | Ensure Percona MySQL server started
+  service: name=mysql state=started

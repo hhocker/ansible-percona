@@ -1,3 +1,3 @@
 ---
 - include: percona.yml
-  when: ansible_distribution in ['Debian', 'Ubuntu']
+  when: ansible_distribution in ['Debian', 'Ubuntu', 'RedHat', 'CentOS']

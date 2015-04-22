@@ -2,6 +2,16 @@
 # file: tasks/percona.yml
 
 - include: repo.yml
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- include: repo_yum.yml
+  when: ansible_distribution in ['RedHat', 'CentOS']  
+  
 - include: install.yml
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- include: install_el.yml 
+  when: ansible_distribution in ['RedHat', 'CentOS']  
+  
 - include: createdatabase.yml
   when: create_app_db
